@@ -1,5 +1,10 @@
-[RELEASE_NOTES_v0.1.0.md](https://github.com/user-attachments/files/29378027/RELEASE_NOTES_v0.1.0.md)
-# ASA-Studio v0.1.0 — 首个开发版本
+# ASA-Studio
+
+AI 图像生成平台 — 支持文生图、图生图、多服务商、每日热词、深浅色主题。
+
+> **开发方式**：本项目 100% 由 AI 生成代码，使用 **Claude Code** + **DeepSeek V4 Pro** 协作完成。纯 AI 无手工（doge）
+
+---
 
 ## 功能
 
@@ -37,19 +42,31 @@ uvicorn server:app --port 8000
 
 ```
 image-gen-app/
-├── server.py           # FastAPI 后端 (多服务商适配)
+├── server.py                     # FastAPI 后端 (多服务商适配)
 ├── static/
-│   └── index.html      # 前端 UI (Glassmorphism + 动效)
-├── output/             # 生成图片存档
-├── requirements.txt    # Python 依赖
-├── start.bat           # Windows 一键启动
-├── README.md           # 项目说明
-└── RELEASE_NOTES.md    # 版本说明
+│   └── index.html                # 前端 UI (Glassmorphism + 动效)
+├── .claude/skills/
+│   └── asa-studio.md             # Claude Code Skill（开发辅助）
+├── output/                       # 生成图片存档
+├── requirements.txt              # Python 依赖
+├── start.bat                     # Windows 一键启动
+├── README.md                     # 项目说明
+└── RELEASE_NOTES_vX.X.X.md       # 版本说明
 ```
+
+## Claude Code Skill
+
+本项目内置了 Claude Code Skill 文件（`.claude/skills/asa-studio.md`），在项目目录下使用 Claude Code 时输入 `/asa-studio` 即可加载项目上下文，包含：
+
+- 架构概览与 API 路由
+- 4 家服务商的适配方式
+- 添加新服务商的步骤指南
+- UI 主题变量结构
+- 版本命名与打包规范
 
 ## 技术栈
 
-Python · FastAPI · OpenAI SDK · httpx · CSS Animations · Glassmorphism
+Python · FastAPI · OpenAI SDK · httpx · CSS Animations · Glassmorphism · Claude Code · DeepSeek V4 Pro
 
 ---
 
