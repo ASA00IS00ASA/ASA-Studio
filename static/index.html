@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASA-Studio</title>
+    <style>
+        :root {
+            --bg: #06060e;
+            --surface: rgba(18, 18, 35, 0.7);
+            --surface2: rgba(28, 28, 50, 0.8);
+            --border: rgba(255, 255, 255, 0.08);
+            --border-glow: rgba(124, 92, 252, 0.3);
+            --text: #e8e8f4;
+            --muted: #8888b0;
+            --accent: #7c5cfc;
+            --accent2: #5cc8fc;
+            --accent3: #f75cc8;
+            --accent-glow: rgba(124, 92, 252, 0.2);
+            --danger: #f87171;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --glass-blur: 16px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            overflow-x: hidden;
+        }
+
+        /* ====== Animated background orbs ====== */
+        .bg-orbs {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.15;
+            animation: orbFloat 18s ease-in-out infinite;
+        }
+        .bg-orb:nth-child(1) {
+            width: 500px; height: 500px;
+            background: var(--accent);
+            top: -15%; left: -10%;
+            animation-delay: 0s;
+        }
+        .bg-orb:nth-child(2) {
+            width: 400px; height: 400px;
+            background: var(--accent2);
+            bottom: -10%; right: -8%;
+            animation-delay: -6s;
+            animation-duration: 22s;
+        }
+        .bg-orb:nth-child(3) {
+            width: 350px; height: 350px;
+            background: var(--accent3);
+            top: 50%; left: 50%;
+            animation-delay: -12s;
+            animation-duration: 20s;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25%      { transform: translate(8%, -12%) scale(1.15); }
+            50%      { transform: translate(-5%, 10%) scale(0.9); }
+            75%      { transform: translate(-10%, -5%) scale(1.1); }
+        }
+
+        /* ====== Sidebar (glass) ====== */
+        .sidebar {
+            width: 260px;
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 12px;
+            flex-shrink: 0;
+            overflow-y: auto;
+            z-index: 10;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar h2 {
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .sidebar .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 2px 0;
+        }
+
+        .history-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-height: 0;
+        }
+        .history-list::-webkit-scrollbar { width: 4px; }
+        .history-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        .history-item {
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            color: var(--muted);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            word-break: break-all;
+            border: 1px solid transparent;
+        }
+        .history-item:hover {
+            background: rgba(124,92,252,0.08);
+            color: var(--text);
+            transform: translateX(3px);
+        }
+        .history-item.active {
+            background: rgba(124,92,252,0.12);
+            color: var(--accent);
+            border-color: rgba(124,92,252,0.25);
+        }
+        .history-item .time { font-size: 10px; color: #555; margin-top: 2px; }
+
+        /* Settings toggle */
+        .settings-toggle {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            text-align: center;
+            transition: all 0.3s;
+            backdrop-filter: blur(4px);
+        }
+        .settings-toggle:hover {
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .settings-panel {
+            display: none;
+            flex-direction: column;
+            gap: 7px;
+        }
+        .settings-panel.show { display: flex; }
+
+        .settings-panel label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .settings-panel input {
+            padding: 7px 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+            color: var(--text);
+            font-size: 11px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .settings-panel input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .btn-save, .btn-test {
+            border: none;
+            padding: 7px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, var(--accent), #6a44e8);
+            color: #fff;
+        }
+        .btn-save:hover { filter: brightness(1.2); transform: translateY(-1px); }
+        .btn-test {
+            background: rgba(255,255,255,0.04);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-test:hover { border-color: var(--accent); box-shadow: 0 0 10px var(--accent-glow); }
+
+        .status-badge {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        .status-badge.ok { background: rgba(74,222,128,0.12); color: var(--success); }
+        .status-badge.missing { background: rgba(251,191,36,0.12); color: var(--warning); }
+
+        #testResult {
+            font-size: 10px;
+            color: var(--muted);
+            word-break: break-all;
+            max-height: 120px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        /* ====== Main ====== */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 40px 60px;
+            overflow-y: auto;
+            z-index: 5;
+        }
+        .main::-webkit-scrollbar { width: 6px; }
+        .main::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 3px; }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ====== Animated title ====== */
+        .title-wrapper {
+            position: relative;
+            text-align: center;
+            padding: 10px 0 4px;
+        }
+
+        .title {
+            font-size: 40px;
+            font-weight: 800;
+            letter-spacing: -1px;
+            display: inline-block;
+            position: relative;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 40%, var(--accent3) 70%, var(--accent) 100%);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: titleShimmer 4s ease-in-out infinite;
+            filter: drop-shadow(0 0 20px rgba(124,92,252,0.3));
+        }
+
+        @keyframes titleShimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50%      { background-position: 100% 50%; }
+        }
+
+        .title-glow {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 280px;
+            height: 60px;
+            background: radial-gradient(ellipse, rgba(124,92,252,0.15), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+            animation: titleGlowPulse 3s ease-in-out infinite;
+        }
+        @keyframes titleGlowPulse {
+            0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+            50%      { opacity: 1; transform: translate(-50%, -50%) scale(1.3); }
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--muted);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: subtitleFade 3s ease-in-out infinite;
+        }
+        @keyframes subtitleFade {
+            0%, 100% { opacity: 0.5; }
+            50%      { opacity: 1; }
+        }
+
+        /* Trending section */
+        .trending-section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .trending-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .trending-header .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent3);
+            animation: dotPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes dotPulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50%      { opacity: 1; transform: scale(1.3); }
+        }
+        .trending-header .date {
+            font-weight: 400;
+            color: var(--muted);
+            font-size: 10px;
+            margin-left: auto;
+        }
+        .trending-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 8px;
+        }
+        .trending-card {
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .trending-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(124,92,252,0.06), transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .trending-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3), 0 0 20px var(--accent-glow);
+        }
+        .trending-card:hover::before { opacity: 1; }
+        .trending-card:active { transform: scale(0.97); }
+
+        .trending-card .cat-tag {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--accent2);
+            font-weight: 600;
+        }
+        .trending-card .prompt-zh {
+            font-size: 12px;
+            color: var(--text);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .trending-card .prompt-en {
+            font-size: 10px;
+            color: var(--muted);
+            display: -webkit-box;
+            -webkit-line-clamp: 1;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-style: italic;
+        }
+        .trending-loading {
+            display: flex;
+            gap: 8px;
+        }
+        .trending-skeleton {
+            flex: 1;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            animation: skeletonPulse 1.5s ease-in-out infinite;
+        }
+        @keyframes skeletonPulse {
+            0%, 100% { opacity: 0.3; }
+            50%      { opacity: 0.6; }
+        }
+        .trending-error {
+            font-size: 11px;
+            color: var(--muted);
+            text-align: center;
+            padding: 6px;
+        }
+
+        /* ====== Glass cards ====== */
+        .glass-card {
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card:hover {
+            border-color: rgba(255,255,255,0.15);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3), 0 0 0 1px rgba(124,92,252,0.1) inset;
+        }
+
+        /* Upload area */
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.1);
+            border-radius: var(--radius);
+            padding: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: rgba(255,255,255,0.02);
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-area::before {
+            content: "";
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle at 50% 50%, rgba(124,92,252,0.06), transparent 60%);
+            opacity: 0;
+            transition: opacity 0.4s;
+            pointer-events: none;
+        }
+        .upload-area:hover, .upload-area.drag-over {
+            border-color: var(--accent);
+            background: rgba(124,92,252,0.04);
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+        .upload-area:hover::before, .upload-area.drag-over::before { opacity: 1; }
+        .upload-area.has-image { padding: 8px; text-align: left; border-style: solid; }
+        .upload-area input[type="file"] { display: none; }
+
+        .upload-placeholder { color: var(--muted); font-size: 12px; line-height: 1.6; position: relative; z-index: 1; }
+        .upload-placeholder .icon {
+            font-size: 30px; display: block; margin-bottom: 4px;
+            animation: uploadIconBounce 2s ease-in-out infinite;
+        }
+        @keyframes uploadIconBounce {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
+        }
+        .upload-placeholder .sub { font-size: 10px; color: #555; }
+
+        .image-preview {
+            position: relative;
+            display: inline-block;
+            max-width: 200px;
+            animation: previewIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes previewIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+        .image-preview img {
+            width: 100%;
+            border-radius: 10px;
+            display: block;
+            max-height: 150px;
+            object-fit: contain;
+            background: #000;
+            border: 1px solid var(--border);
+        }
+        .image-preview .btn-remove {
+            position: absolute;
+            top: -8px; right: -8px;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: var(--danger);
+            color: #fff;
+            border: 2px solid var(--bg);
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            transition: transform 0.2s;
+        }
+        .image-preview .btn-remove:hover { transform: scale(1.15); }
+
+        /* Textarea */
+        .prompt-wrapper { position: relative; }
+
+        textarea {
+            width: 100%;
+            height: 90px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            color: var(--text);
+            font-size: 14px;
+            resize: vertical;
+            outline: none;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            line-height: 1.6;
+        }
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow), 0 0 20px rgba(124,92,252,0.08) inset;
+        }
+        textarea::placeholder { color: #555; }
+
+        .char-count {
+            position: absolute;
+            bottom: 8px; right: 14px;
+            font-size: 10px;
+            color: var(--muted);
+            pointer-events: none;
+            transition: color 0.3s;
+        }
+
+        /* Presets section */
+        .presets-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .preset-category {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+        .preset-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .preset-tag {
+            padding: 5px 13px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            font-size: 11px;
+            color: var(--muted);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            user-select: none;
+            background: rgba(255,255,255,0.03);
+            backdrop-filter: blur(4px);
+        }
+        .preset-tag:hover {
+            border-color: var(--accent);
+            color: #fff;
+            background: rgba(124,92,252,0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(124,92,252,0.2);
+        }
+        .preset-tag:active { transform: scale(0.95); }
+        .preset-tag.active {
+            border-color: var(--accent);
+            color: #fff;
+            background: rgba(124,92,252,0.2);
+            box-shadow: 0 0 16px var(--accent-glow);
+            animation: tagPulse 2s ease-in-out infinite;
+        }
+        @keyframes tagPulse {
+            0%, 100% { box-shadow: 0 0 12px var(--accent-glow); }
+            50%      { box-shadow: 0 0 22px rgba(124,92,252,0.35); }
+        }
+        .preset-tag.recommend {
+            border-color: rgba(92,200,252,0.3);
+            color: var(--accent2);
+        }
+        .preset-tag.recommend:hover {
+            border-color: var(--accent2);
+            box-shadow: 0 4px 16px rgba(92,200,252,0.2);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        select {
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--surface);
+            backdrop-filter: blur(8px);
+            color: var(--text);
+            font-size: 12px;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        select:focus { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+
+        /* Generate button */
+        .btn-generate {
+            background: linear-gradient(135deg, var(--accent) 0%, #6a44e8 50%, var(--accent) 100%);
+            background-size: 200% 200%;
+            color: #fff;
+            flex: 1;
+            min-width: 120px;
+            padding: 12px 28px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: btnGradient 4s ease infinite;
+        }
+        @keyframes btnGradient {
+            0%, 100% { background-position: 0% 50%; }
+            50%      { background-position: 100% 50%; }
+        }
+        .btn-generate::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transform: translateX(-100%);
+            animation: btnShimmer 3s ease-in-out infinite;
+        }
+        @keyframes btnShimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 32px rgba(124,92,252,0.4), 0 0 0 1px rgba(255,255,255,0.1) inset;
+        }
+        .btn-generate:active { transform: translateY(0); }
+        .btn-generate:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+            filter: grayscale(0.3);
+            animation: none;
+        }
+        .btn-generate:disabled::after { display: none; }
+
+        /* Result */
+        .result {
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            -webkit-backdrop-filter: blur(var(--glass-blur));
+            min-height: 320px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .result:empty { min-height: 320px; }
+        .result img {
+            max-width: 100%;
+            border-radius: var(--radius);
+            animation: imageReveal 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes imageReveal {
+            from { opacity: 0; transform: scale(0.95); filter: blur(10px); }
+            to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+        }
+
+        .placeholder {
+            color: var(--muted);
+            font-size: 13px;
+            text-align: center;
+            padding: 40px;
+            line-height: 1.8;
+        }
+
+        .spinner-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,0.08);
+            border-top-color: var(--accent);
+            border-right-color: var(--accent2);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .generating-text {
+            font-size: 13px;
+            color: var(--muted);
+            animation: generatingDots 1.5s steps(4, end) infinite;
+        }
+        @keyframes generatingDots {
+            0%   { opacity: 1; }
+            50%  { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Download bar */
+        .download-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .btn-download {
+            background: var(--surface2);
+            color: var(--text);
+            padding: 9px 20px;
+            font-size: 13px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-download:hover {
+            background: rgba(124,92,252,0.12);
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        .filename-text {
+            font-size: 11px;
+            color: var(--muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .error {
+            color: var(--danger);
+            background: rgba(248,113,113,0.08);
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            text-align: center;
+            border: 1px solid rgba(248,113,113,0.2);
+            animation: shake 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%      { transform: translateX(-6px); }
+            40%      { transform: translateX(6px); }
+            60%      { transform: translateX(-4px); }
+            80%      { transform: translateX(4px); }
+        }
+
+        .text-result {
+            color: var(--text);
+            background: var(--surface);
+            backdrop-filter: blur(var(--glass-blur));
+            padding: 16px 20px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            line-height: 1.7;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid var(--border);
+        }
+
+        /* Hint */
+        .hint-row {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .hint-badge {
+            font-size: 10px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+        }
+        .hint-badge:hover { opacity: 1; }
+        .hint-badge .key {
+            background: var(--surface2);
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        /* Accessibility */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            .sidebar {
+                width: 100%;
+                max-height: 200px;
+                flex-shrink: 0;
+            }
+            .main { padding: 20px 16px; }
+            .title { font-size: 30px; }
+            .controls { flex-direction: column; }
+            .btn-generate { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Animated background -->
+    <div class="bg-orbs">
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+        <div class="bg-orb"></div>
+    </div>
+
+    <!-- ====== Sidebar ====== -->
+    <aside class="sidebar">
+        <h2>🖼 历史记录</h2>
+        <div class="history-list" id="historyList">
+            <div style="color:var(--muted);font-size:11px;text-align:center;padding:16px;">暂无生成记录</div>
+        </div>
+
+        <div class="divider"></div>
+        <button class="settings-toggle" onclick="toggleSettings()">⚙ API 设置</button>
+        <div class="settings-panel" id="settingsPanel">
+            <label>API Base URL
+                <input type="text" id="baseUrlInput" placeholder="https://www.right.codes/draw/v1">
+            </label>
+            <label>API Key
+                <input type="password" id="apiKeyInput" placeholder="sk-...">
+            </label>
+            <button class="btn-save" onclick="saveSettings()">保存设置</button>
+            <button class="btn-test" onclick="testConnection()">🔍 测试连接</button>
+            <div class="status-badge missing" id="statusBadge">未配置</div>
+            <div id="testResult"></div>
+        </div>
+    </aside>
+
+    <!-- ====== Main ====== -->
+    <main class="main">
+        <div class="container">
+
+            <!-- Animated title -->
+            <div class="title-wrapper">
+                <div class="title-glow"></div>
+                <h1 class="title">ASA-Studio</h1>
+                <div class="subtitle">AI-Powered Image Generation</div>
+            </div>
+
+            <!-- Daily trending -->
+            <div class="trending-section" id="trendingSection">
+                <div class="trending-header">
+                    <span class="dot"></span> 今日热门提示词
+                    <span class="date" id="trendingDate"></span>
+                </div>
+                <div class="trending-grid" id="trendingGrid">
+                    <div class="trending-skeleton"></div>
+                    <div class="trending-skeleton"></div>
+                    <div class="trending-skeleton"></div>
+                    <div class="trending-skeleton"></div>
+                </div>
+            </div>
+
+            <!-- Image upload -->
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+                <div class="upload-placeholder" id="uploadPlaceholder">
+                    <span class="icon">🖼</span>
+                    点击或拖拽上传参考图（可选）<br>
+                    <span class="sub">支持 JPG / PNG / WebP — 图生图 · 风格参考</span>
+                </div>
+                <div id="imagePreviewContainer" style="display:none;"></div>
+            </div>
+
+            <!-- Prompt -->
+            <div class="prompt-wrapper">
+                <textarea id="promptInput" placeholder="描述你想要的画面，中英文均可。例如：一只柴犬戴着宇航头盔漂浮在星空中，数字艺术风格"></textarea>
+                <div class="char-count"><span id="charCount">0</span> 字</div>
+            </div>
+
+            <!-- Presets: Style -->
+            <div class="presets-section">
+                <div class="preset-category">🎨 风格</div>
+                <div class="preset-tags">
+                    <span class="preset-tag" data-keyword="写实风格">写实</span>
+                    <span class="preset-tag" data-keyword="动漫风格">动漫</span>
+                    <span class="preset-tag" data-keyword="油画风格">油画</span>
+                    <span class="preset-tag" data-keyword="水彩手绘风格">水彩</span>
+                    <span class="preset-tag" data-keyword="像素艺术风格">像素</span>
+                    <span class="preset-tag" data-keyword="3D渲染 C4D风格">3D渲染</span>
+                    <span class="preset-tag" data-keyword="赛博朋克风格 霓虹灯">赛博朋克</span>
+                    <span class="preset-tag" data-keyword="水墨画风格">水墨画</span>
+                    <span class="preset-tag" data-keyword="极简扁平风格">极简</span>
+                    <span class="preset-tag" data-keyword="浮世绘风格">浮世绘</span>
+                </div>
+            </div>
+
+            <!-- Presets: Quality -->
+            <div class="presets-section">
+                <div class="preset-category">✨ 画质 & 光影</div>
+                <div class="preset-tags">
+                    <span class="preset-tag recommend" data-keyword="4K 超高清 精细细节">4K超清</span>
+                    <span class="preset-tag recommend" data-keyword="电影级光照 景深">电影光感</span>
+                    <span class="preset-tag" data-keyword="柔和自然光 高细节">自然光</span>
+                    <span class="preset-tag" data-keyword="戏剧性光影 强烈对比">戏剧光</span>
+                    <span class="preset-tag" data-keyword="HDR 高动态范围">HDR</span>
+                    <span class="preset-tag" data-keyword="暖色调 金色光线">暖色调</span>
+                    <span class="preset-tag" data-keyword="冷色调 蓝色调">冷色调</span>
+                    <span class="preset-tag" data-keyword="黑白 高对比度">黑白</span>
+                </div>
+            </div>
+
+            <!-- Presets: Scene -->
+            <div class="presets-section">
+                <div class="preset-category">🏷 场景 & 主题</div>
+                <div class="preset-tags">
+                    <span class="preset-tag" data-keyword="自然风景">风景</span>
+                    <span class="preset-tag" data-keyword="人物肖像">人物</span>
+                    <span class="preset-tag" data-keyword="可爱动物">动物</span>
+                    <span class="preset-tag" data-keyword="建筑设计 现代">建筑</span>
+                    <span class="preset-tag" data-keyword="未来科幻场景">科幻</span>
+                    <span class="preset-tag" data-keyword="奇幻魔法世界">奇幻</span>
+                    <span class="preset-tag" data-keyword="中国古代风格">古风</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <select id="modelSelect">
+                    <option value="nano-banana">nano-banana</option>
+                    <option value="nano-banana-2">nano-banana-2</option>
+                    <option value="gpt-image-2" selected>gpt-image-2</option>
+                    <option value="gpt-image-2-vip">gpt-image-2-vip</option>
+                    <option value="nano-banana-pro">nano-banana-pro</option>
+                </select>
+
+                <select id="ratioSelect">
+                    <option value="1:1 正方形">1:1 正方形</option>
+                    <option value="4:3 横向" selected>4:3 横向</option>
+                    <option value="3:4 竖向">3:4 竖向</option>
+                    <option value="16:9 宽屏">16:9 宽屏</option>
+                    <option value="9:16 竖屏">9:16 竖屏</option>
+                    <option value="3:2 标准横">3:2 标准横</option>
+                    <option value="2:3 标准竖">2:3 标准竖</option>
+                    <option value="21:9 超宽">21:9 超宽</option>
+                </select>
+
+                <button class="btn-generate" id="generateBtn" onclick="generate()">🎨 生成图像</button>
+            </div>
+
+            <!-- Result -->
+            <div class="result" id="resultArea">
+                <div class="placeholder">
+                    在上方输入画面描述，点击「生成图像」即可<br>
+                    可点击预设关键词快速添加风格、画质
+                </div>
+            </div>
+
+            <div class="download-bar" id="downloadBar" style="display:none;">
+                <button class="btn-download" id="downloadBtn">⬇ 下载图片</button>
+                <span class="filename-text" id="filenameText"></span>
+            </div>
+
+            <div class="error" id="errorMsg" style="display:none;"></div>
+
+            <div class="hint-row">
+                <span class="hint-badge"><span class="key">Enter</span> 快速生成</span>
+                <span class="hint-badge">点击预设关键词添加效果</span>
+                <span class="hint-badge">拖拽图片进行图生图</span>
+            </div>
+        </div>
+    </main>
+
+<script>
+    const resultArea    = document.getElementById("resultArea");
+    const downloadBar   = document.getElementById("downloadBar");
+    const errorMsg      = document.getElementById("errorMsg");
+    const generateBtn   = document.getElementById("generateBtn");
+    const historyList   = document.getElementById("historyList");
+    const statusBadge   = document.getElementById("statusBadge");
+    const charCount     = document.getElementById("charCount");
+    const promptInput   = document.getElementById("promptInput");
+    let currentB64       = null;
+    let currentFilename  = null;
+
+    // ==================== Image upload ====================
+    let uploadedImageB64 = null;
+    const uploadArea          = document.getElementById("uploadArea");
+    const uploadPlaceholder   = document.getElementById("uploadPlaceholder");
+    const imagePreviewContainer = document.getElementById("imagePreviewContainer");
+
+    uploadArea.addEventListener("dragover", e => {
+        e.preventDefault();
+        uploadArea.classList.add("drag-over");
+    });
+    uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("drag-over"));
+    uploadArea.addEventListener("drop", e => {
+        e.preventDefault();
+        uploadArea.classList.remove("drag-over");
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith("image/")) processFile(file);
+    });
+    imagePreviewContainer.addEventListener("click", e => e.stopPropagation());
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) processFile(file);
+    }
+
+    function processFile(file) {
+        if (file.size > 20 * 1024 * 1024) { alert("图片不能超过 20MB"); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            uploadedImageB64 = reader.result.split(",")[1];
+            uploadPlaceholder.style.display = "none";
+            imagePreviewContainer.style.display = "block";
+            imagePreviewContainer.innerHTML = `
+                <div class="image-preview">
+                    <img src="${reader.result}" alt="参考图">
+                    <button class="btn-remove" onclick="removeImage(event)">✕</button>
+                </div>`;
+            uploadArea.classList.add("has-image");
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeImage(e) {
+        e.stopPropagation();
+        uploadedImageB64 = null;
+        uploadPlaceholder.style.display = "block";
+        imagePreviewContainer.style.display = "none";
+        imagePreviewContainer.innerHTML = "";
+        uploadArea.classList.remove("has-image");
+        document.getElementById("fileInput").value = "";
+    }
+
+    // ==================== Trending prompts ====================
+    async function loadTrending() {
+        const grid = document.getElementById("trendingGrid");
+        const dateEl = document.getElementById("trendingDate");
+        try {
+            const resp = await fetch("/api/trending");
+            const data = await resp.json();
+            dateEl.textContent = data.date;
+
+            grid.innerHTML = data.prompts.map(p => `
+                <div class="trending-card" onclick="useTrendingPrompt('${p.zh.replace(/'/g, "\\'")}', '${p.en.replace(/'/g, "\\'")}')" title="点击使用此提示词">
+                    <span class="cat-tag">${p.cat}</span>
+                    <span class="prompt-zh">${p.zh}</span>
+                    <span class="prompt-en">${p.en}</span>
+                </div>
+            `).join("");
+        } catch (e) {
+            grid.innerHTML = '<div class="trending-error">加载热门提示词失败</div>';
+        }
+    }
+
+    function useTrendingPrompt(zh, en) {
+        promptInput.value = zh;
+        updateCharCount();
+        // Scroll to prompt input
+        promptInput.scrollIntoView({ behavior: "smooth", block: "center" });
+        promptInput.focus();
+        // Brief flash highlight
+        promptInput.style.boxShadow = "0 0 0 3px var(--accent-glow), 0 0 30px rgba(124,92,252,0.2) inset";
+        setTimeout(() => {
+            promptInput.style.boxShadow = "";
+        }, 800);
+    }
+
+    loadTrending();
+
+    // ==================== Settings ====================
+    function getSettings() {
+        return {
+            api_key:  localStorage.getItem("img_gen_api_key") || "",
+            base_url: localStorage.getItem("img_gen_base_url") || "",
+            model:    document.getElementById("modelSelect")?.value || "gpt-image-2",
+        };
+    }
+    function loadSettingsToForm() {
+        const s = getSettings();
+        document.getElementById("apiKeyInput").value  = s.api_key;
+        document.getElementById("baseUrlInput").value = s.base_url;
+        updateStatusBadge();
+    }
+    function saveSettings() {
+        localStorage.setItem("img_gen_api_key",  document.getElementById("apiKeyInput").value.trim());
+        localStorage.setItem("img_gen_base_url", document.getElementById("baseUrlInput").value.trim());
+        updateStatusBadge();
+    }
+    function toggleSettings() { document.getElementById("settingsPanel").classList.toggle("show"); }
+    function updateStatusBadge() {
+        const s = getSettings();
+        if (s.api_key && s.base_url) {
+            statusBadge.textContent = "已配置 ✓";
+            statusBadge.className = "status-badge ok";
+        } else if (s.api_key || s.base_url) {
+            statusBadge.textContent = "配置不完整";
+            statusBadge.className = "status-badge missing";
+        } else {
+            statusBadge.textContent = "未配置";
+            statusBadge.className = "status-badge missing";
+        }
+    }
+    loadSettingsToForm();
+    if (!getSettings().api_key || !getSettings().base_url) {
+        document.getElementById("settingsPanel").classList.add("show");
+    }
+
+    // ==================== Preset tags ====================
+    document.querySelectorAll(".preset-tag").forEach(tag => {
+        tag.addEventListener("click", () => {
+            const keyword = tag.dataset.keyword;
+            const current = promptInput.value;
+            tag.classList.toggle("active");
+            if (tag.classList.contains("active")) {
+                const sep = current && !current.endsWith(" ") && !current.endsWith("\n") ? " " : "";
+                promptInput.value = current + sep + keyword;
+            } else {
+                const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                promptInput.value = current.replace(new RegExp("\\s*" + escaped + "\\s*", "g"), " ").replace(/\s+/g, " ").trim();
+            }
+            updateCharCount();
+            promptInput.focus();
+        });
+    });
+
+    // ==================== Char count ====================
+    promptInput.addEventListener("input", updateCharCount);
+    function updateCharCount() {
+        const len = promptInput.value.length;
+        charCount.textContent = len;
+        charCount.style.color = len > 500 ? "var(--danger)" : "var(--muted)";
+    }
+
+    // ==================== Test connection ====================
+    async function testConnection() {
+        const settings = getSettings();
+        if (!settings.api_key || !settings.base_url) {
+            document.getElementById("testResult").textContent = "请先填写 API Key 和 Base URL";
+            return;
+        }
+        document.getElementById("testResult").textContent = "测试中...";
+        try {
+            const resp = await fetch("/api/test", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ api_key: settings.api_key, base_url: settings.base_url }),
+            });
+            const data = await resp.json();
+            document.getElementById("testResult").textContent = data.ok
+                ? "✓ " + data.message : "✗ " + data.message;
+        } catch (e) {
+            document.getElementById("testResult").textContent = "✗ 请求失败: " + e.message;
+        }
+    }
+
+    // ==================== Generate ====================
+    async function generate() {
+        const settings = getSettings();
+        if (!settings.api_key || !settings.base_url) {
+            errorMsg.style.display = "block";
+            errorMsg.textContent = "请先在左侧填写 API 信息";
+            document.getElementById("settingsPanel").classList.add("show");
+            return;
+        }
+        const basePrompt = promptInput.value.trim();
+        if (!basePrompt) return;
+
+        const ratio = document.getElementById("ratioSelect").value;
+        const fullPrompt = `${basePrompt}，画面比例为${ratio}`;
+
+        errorMsg.style.display = "none";
+        resultArea.innerHTML = `<div class="spinner-wrapper"><div class="spinner"></div><span class="generating-text">AI 正在生成中，预计 10-30 秒...</span></div>`;
+        generateBtn.disabled = true;
+
+        try {
+            const resp = await fetch("/api/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: fullPrompt,
+                    model: settings.model,
+                    size: "1024x1024",
+                    api_key: settings.api_key,
+                    base_url: settings.base_url,
+                    image_b64: uploadedImageB64 || null,
+                }),
+            });
+            if (!resp.ok) { const err = await resp.json(); throw new Error(err.detail || "生成失败"); }
+            const data = await resp.json();
+
+            if (data.no_image) {
+                resultArea.innerHTML = `<div class="text-result">⚠ 模型未返回图片，请尝试换一个模型或修改描述词。\n\n模型回复:\n${data.text}</div>`;
+                downloadBar.style.display = "none";
+                return;
+            }
+
+            currentB64 = data.image_b64;
+            currentFilename = data.filename;
+            resultArea.innerHTML = `<img src="data:image/png;base64,${data.image_b64}" alt="${basePrompt}">`;
+            downloadBar.style.display = "flex";
+            document.getElementById("filenameText").textContent = data.filename;
+            loadHistory();
+        } catch (e) {
+            resultArea.innerHTML = '<div class="placeholder">生成就绪</div>';
+            errorMsg.style.display = "block";
+            errorMsg.textContent = "错误: " + e.message;
+            downloadBar.style.display = "none";
+        } finally {
+            generateBtn.disabled = false;
+        }
+    }
+
+    // ==================== Download ====================
+    document.getElementById("downloadBtn").onclick = () => {
+        if (!currentB64) return;
+        const a = document.createElement("a");
+        a.href = "data:image/png;base64," + currentB64;
+        a.download = currentFilename || "generated.png";
+        a.click();
+    };
+
+    // ==================== Enter key ====================
+    promptInput.addEventListener("keydown", e => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); generate(); }
+    });
+
+    // ==================== History ====================
+    async function loadHistory() {
+        try {
+            const resp = await fetch("/api/history");
+            const items = await resp.json();
+            if (items.length === 0) {
+                historyList.innerHTML = '<div style="color:var(--muted);font-size:11px;text-align:center;padding:16px;">暂无生成记录</div>';
+                return;
+            }
+            historyList.innerHTML = items.map(item => `
+                <div class="history-item" data-filename="${item.filename}" onclick="viewHistory('${item.filename}')">
+                    ${item.filename}
+                    <div class="time">${item.created_at}</div>
+                </div>`).join("");
+        } catch (e) {}
+    }
+    async function viewHistory(filename) {
+        try {
+            errorMsg.style.display = "none";
+            resultArea.innerHTML = '<div class="spinner-wrapper"><div class="spinner"></div></div>';
+            const resp = await fetch("/api/image/" + filename);
+            if (!resp.ok) throw new Error("加载失败");
+            const data = await resp.json();
+            currentB64 = data.image_b64;
+            currentFilename = data.filename;
+            resultArea.innerHTML = `<img src="data:image/png;base64,${data.image_b64}" alt="${data.filename}">`;
+            downloadBar.style.display = "flex";
+            document.getElementById("filenameText").textContent = data.filename;
+            document.querySelectorAll(".history-item").forEach(el => el.classList.remove("active"));
+            document.querySelector(`[data-filename="${filename}"]`)?.classList.add("active");
+        } catch (e) {
+            errorMsg.style.display = "block";
+            errorMsg.textContent = "错误: " + e.message;
+        }
+    }
+    loadHistory();
+</script>
+</body>
+</html>
