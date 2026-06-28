@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ASA-Studio</string>
+    <string name="server_url_hint">http://192.168.1.100:8000</string>
+    <string name="server_url_label">服务器地址</string>
+    <string name="server_url_desc">填写运行 server.py 的电脑的局域网 IP 和端口</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="connecting">正在连接...</string>
+    <string name="connected">已连接</string>
+    <string name="disconnected">未连接</string>
+</resources>
