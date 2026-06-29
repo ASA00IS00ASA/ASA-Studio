@@ -1319,11 +1319,11 @@
             </div>
 
             <!-- Image upload -->
-            <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)">
+            <div class="upload-area" id="uploadArea" onclick="triggerImagePick()">
+                <input type="file" id="fileInput" accept="image/*" onchange="handleFileSelect(event)" style="display:none;">
                 <div class="upload-placeholder" id="uploadPlaceholder">
                     <span class="icon">🖼</span>
-                    点击或拖拽上传参考图（可选）<br>
+                    点击上传参考图（可选）<br>
                     <span class="sub">支持 JPG / PNG / WebP — 图生图 · 风格参考</span>
                 </div>
                 <div id="imagePreviewContainer" style="display:none;"></div>
@@ -1429,11 +1429,17 @@
                 <div class="trending-source" id="trendingSource"></div>
             </div>
 
-            <div class="hint-row">
+            <div class="hint-row" id="hintRow">
                 <span class="hint-badge"><span class="key">Enter</span> 快速生成</span>
                 <span class="hint-badge">点击预设关键词添加效果</span>
                 <span class="hint-badge">拖拽图片进行图生图</span>
             </div>
+            <script>
+            // Hide desktop hints on Android
+            if (typeof AndroidBridge !== "undefined" && AndroidBridge.isNativeApp && AndroidBridge.isNativeApp()) {
+                document.getElementById("hintRow").style.display = "none";
+            }
+            </script>
         </div>
     </main>
 
@@ -1526,6 +1532,30 @@
     const uploadPlaceholder = document.getElementById("uploadPlaceholder");
     const imagePreviewContainer = document.getElementById("imagePreviewContainer");
 
+    function triggerImagePick() {
+        // Native Android: use system photo picker
+        if (typeof AndroidBridge !== "undefined" && AndroidBridge.isNativeApp && AndroidBridge.isNativeApp()) {
+            AndroidBridge.pickImage("onImagePicked");
+            return;
+        }
+        // Web fallback
+        document.getElementById("fileInput").click();
+    }
+
+    // Native image picker callback
+    function onImagePicked(err, dataUrl, b64) {
+        if (err) {
+            if (typeof AndroidBridge !== "undefined") AndroidBridge.showToast("选图失败: " + err);
+            return;
+        }
+        uploadedImageB64 = b64;
+        uploadPlaceholder.style.display = "none";
+        imagePreviewContainer.style.display = "block";
+        imagePreviewContainer.innerHTML = `<div class="image-preview"><img src="${dataUrl}" alt="参考图"><button class="btn-remove" onclick="removeImage(event)">✕</button></div>`;
+        uploadArea.classList.add("has-image");
+    }
+
+    // Web-only: drag & drop + file input
     uploadArea.addEventListener("dragover", e => { e.preventDefault(); uploadArea.classList.add("drag-over"); });
     uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("drag-over"));
     uploadArea.addEventListener("drop", e => {
@@ -1533,17 +1563,18 @@
         const file = e.dataTransfer.files[0];
         if (file && file.type.startsWith("image/")) processFile(file);
     });
-    imagePreviewContainer.addEventListener("click", e => e.stopPropagation());
+    imagePreviewContainer.addEventListener("click", e => { if (e.target.tagName !== "BUTTON") triggerImagePick(); });
 
     function handleFileSelect(e) { const file = e.target.files[0]; if (file) processFile(file); }
     function processFile(file) {
         if (file.size > 20*1024*1024) { alert("图片不能超过 20MB"); return; }
         const reader = new FileReader();
         reader.onload = () => {
-            uploadedImageB64 = reader.result.split(",")[1];
+            const dataUrl = reader.result;
+            uploadedImageB64 = dataUrl.split(",")[1];
             uploadPlaceholder.style.display = "none";
             imagePreviewContainer.style.display = "block";
-            imagePreviewContainer.innerHTML = `<div class="image-preview"><img src="${reader.result}" alt="参考图"><button class="btn-remove" onclick="removeImage(event)">✕</button></div>`;
+            imagePreviewContainer.innerHTML = `<div class="image-preview"><img src="${dataUrl}" alt="参考图"><button class="btn-remove" onclick="removeImage(event)">✕</button></div>`;
             uploadArea.classList.add("has-image");
         };
         reader.readAsDataURL(file);

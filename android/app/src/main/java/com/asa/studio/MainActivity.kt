@@ -16,8 +16,13 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,11 +34,41 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var pendingImageCallback = ""
+
+    private val imagePicker = registerForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        if (uri == null || pendingImageCallback.isEmpty()) return@registerForActivityResult
+        scope.launch {
+            try {
+                val inputStream = contentResolver.openInputStream(uri)
+                val bytes = inputStream?.readBytes() ?: throw Exception("无法读取图片")
+                inputStream.close()
+                val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                val mime = contentResolver.getType(uri) ?: "image/png"
+                val dataUrl = "data:$mime;base64,$b64"
+                evaluateJs("$pendingImageCallback(null, '$dataUrl', '$b64')")
+            } catch (e: Exception) {
+                evaluateJs("$pendingImageCallback('${e.message}', null, null)")
+            }
+            pendingImageCallback = ""
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
+        // Edge-to-edge with dark status bar
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = 0xFF06060E.toInt()
+        window.navigationBarColor = 0xFF06060E.toInt()
+        WindowInsetsControllerCompat(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+
+        setContentView(R.layout.activity_main)
         webView = findViewById(R.id.webView)
         setupWebView()
         webView.loadUrl("file:///android_asset/frontend/index.html")
@@ -41,6 +76,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupWebView() {
         webView.apply {
+            // Transparent bg — no white flash
+            setBackgroundColor(0x00000000)
+
+            // Native-feel scrolling
+            isVerticalScrollBarEnabled = false
+            isHorizontalScrollBarEnabled = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+
             settings.apply {
                 javaScriptEnabled = true
                 domStorageEnabled = true
@@ -52,10 +95,30 @@ class MainActivity : AppCompatActivity() {
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                // Disable text selection on long press (native feel)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    // Safe browsing off — not needed for local assets
+                }
             }
+
             addJavascriptInterface(AndroidBridge(), "AndroidBridge")
+
             webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    // Inject CSS to remove tap highlight and improve touch
+                    evaluateJavascript("""
+                        (function(){
+                            var s=document.createElement('style');
+                            s.textContent='*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;} input,textarea{-webkit-user-select:text;user-select:text;}';
+                            document.head.appendChild(s);
+                        })();
+                    """.trimIndent(), null)
+                }
+
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?, request: WebResourceRequest?
+                ): Boolean {
                     request?.url?.let { url ->
                         if (url.scheme == "http" || url.scheme == "https") {
                             startActivity(Intent(Intent.ACTION_VIEW, url))
@@ -65,13 +128,24 @@ class MainActivity : AppCompatActivity() {
                     return false
                 }
             }
+
             webChromeClient = object : WebChromeClient() {}
+
             setLayerType(View.LAYER_TYPE_HARDWARE, null)
         }
     }
 
     inner class AndroidBridge {
-        // ── Self-contained mode (no PC server needed) ──
+        @JavascriptInterface
+        fun pickImage(callbackName: String) {
+            pendingImageCallback = callbackName
+            imagePicker.launch(
+                androidx.activity.result.PickVisualMediaRequest(
+                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                )
+            )
+        }
+
         @JavascriptInterface
         fun generateImage(jsonParams: String) {
             scope.launch {
@@ -116,7 +190,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ── Image handling ──
         @JavascriptInterface
         fun saveImage(b64Data: String, filename: String) {
             try {
@@ -175,6 +248,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    @Deprecated("Use onBackPressedDispatcher")
     override fun onBackPressed() {
         if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
     }
