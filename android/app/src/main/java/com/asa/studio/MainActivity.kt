@@ -106,17 +106,20 @@ class MainActivity : AppCompatActivity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    val statusBarH = getStatusBarHeight()
+                    val density = resources.displayMetrics.density
+                    val barH = (getStatusBarHeight() / density).toInt()
                     evaluateJavascript("""
                         (function(){
                             var s=document.createElement('style');
                             s.textContent='*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;} input,textarea{-webkit-user-select:text;user-select:text;}';
                             document.head.appendChild(s);
-                            var top=String($statusBarH + 10);
+                            var top=${barH}+10;
                             var g=document.querySelector('.gear-btn'), m=document.querySelector('.mode-btn'), h=document.querySelector('.hamburger-btn');
                             if(g)g.style.top=top+'px';
                             if(m)m.style.top=top+'px';
                             if(h)h.style.top=top+'px';
+                            var main=document.querySelector('.main');
+                            if(main)main.style.paddingTop=(${barH}+60)+'px';
                         })();
                     """.trimIndent(), null)
                 }
