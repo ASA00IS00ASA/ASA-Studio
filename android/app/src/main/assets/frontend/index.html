@@ -1678,7 +1678,8 @@
             tag.classList.toggle("active");
             if(tag.classList.contains("active")){ const sep = cur&&!cur.endsWith(" ")&&!cur.endsWith("\n")?" ":""; promptInput.value=cur+sep+kw; }
             else { const esc = kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); promptInput.value=cur.replace(new RegExp("\\s*"+esc+"\\s*","g")," ").replace(/\s+/g," ").trim(); }
-            updateCharCount(); promptInput.focus();
+            updateCharCount();
+            if (!_isNative()) promptInput.focus();
         });
     });
     promptInput.addEventListener("input", updateCharCount);
@@ -1849,7 +1850,7 @@
         setTimeout(() => { btn.style.transform = ""; }, 400);
         loadTrending(Date.now().toString() + Math.random().toString(), true);
     }
-    function useTrendingPrompt(zh,en){ promptInput.value=zh; updateCharCount(); promptInput.scrollIntoView({behavior:"smooth",block:"center"}); promptInput.focus(); promptInput.style.boxShadow="0 0 0 3px var(--accent-glow),0 0 30px rgba(124,92,252,0.2) inset"; setTimeout(()=>promptInput.style.boxShadow="",800); }
+    function useTrendingPrompt(zh,en){ promptInput.value=zh; updateCharCount(); promptInput.scrollIntoView({behavior:"smooth",block:"center"}); if (!_isNative()) promptInput.focus(); promptInput.style.boxShadow="0 0 0 3px var(--accent-glow),0 0 30px rgba(124,92,252,0.2) inset"; setTimeout(()=>promptInput.style.boxShadow="",800); }
     loadTrending();
 
     // ==================== History ====================
