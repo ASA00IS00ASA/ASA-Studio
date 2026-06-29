@@ -106,11 +106,14 @@ class MainActivity : AppCompatActivity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    // Inject CSS to remove tap highlight and improve touch
+                    // Get status bar height and pass to CSS
+                    val statusBarH = getStatusBarHeight()
+                    // Inject touch improvements + safe area
                     evaluateJavascript("""
                         (function(){
                             var s=document.createElement('style');
                             s.textContent='*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;} input,textarea{-webkit-user-select:text;user-select:text;}';
+                            s.textContent+=':root{--status-bar-h:${statusBarH}px;}';
                             document.head.appendChild(s);
                         })();
                     """.trimIndent(), null)
@@ -238,6 +241,11 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun isNativeApp(): Boolean = true
+    }
+
+    private fun getStatusBarHeight(): Int {
+        val resId = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resId > 0) resources.getDimensionPixelSize(resId) else 48
     }
 
     private fun evaluateJs(script: String) {
