@@ -111,9 +111,12 @@ class MainActivity : AppCompatActivity() {
                         (function(){
                             var s=document.createElement('style');
                             s.textContent='*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;} input,textarea{-webkit-user-select:text;user-select:text;}';
-                            s.textContent+=':root{--status-bar-h:${statusBarH}px;}';
-                            s.textContent+='@media (max-width:768px){.gear-btn,.mode-btn,.hamburger-btn{top:calc(var(--status-bar-h) + 10px)!important;}}';
                             document.head.appendChild(s);
+                            var top=String($statusBarH + 10);
+                            var g=document.querySelector('.gear-btn'), m=document.querySelector('.mode-btn'), h=document.querySelector('.hamburger-btn');
+                            if(g)g.style.top=top+'px';
+                            if(m)m.style.top=top+'px';
+                            if(h)h.style.top=top+'px';
                         })();
                     """.trimIndent(), null)
                 }
