@@ -106,14 +106,13 @@ class MainActivity : AppCompatActivity() {
             webViewClient = object : WebViewClient() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
-                    // Get status bar height and pass to CSS
                     val statusBarH = getStatusBarHeight()
-                    // Inject touch improvements + safe area
                     evaluateJavascript("""
                         (function(){
                             var s=document.createElement('style');
                             s.textContent='*{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;} input,textarea{-webkit-user-select:text;user-select:text;}';
                             s.textContent+=':root{--status-bar-h:${statusBarH}px;}';
+                            s.textContent+='@media (max-width:768px){.gear-btn,.mode-btn,.hamburger-btn{top:calc(var(--status-bar-h) + 10px)!important;}}';
                             document.head.appendChild(s);
                         })();
                     """.trimIndent(), null)
